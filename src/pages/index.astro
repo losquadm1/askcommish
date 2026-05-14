@@ -146,9 +146,14 @@ import Container from "@components/Container.astro";
     transition: filter 0.4s ease;
   }
 
-  .commish:hover,
   .commish.playing {
     filter: drop-shadow(0 0 18px rgba(202, 226, 255, 0.85)) drop-shadow(0 0 40px rgba(152, 188, 255, 0.5));
+  }
+
+  @media (hover: hover) {
+    .commish:hover {
+      filter: drop-shadow(0 0 18px rgba(202, 226, 255, 0.85)) drop-shadow(0 0 40px rgba(152, 188, 255, 0.5));
+    }
   }
 
   .commish img {
