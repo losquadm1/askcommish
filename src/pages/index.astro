@@ -34,18 +34,29 @@ import Container from "@components/Container.astro";
     { file: "you could not get to the top from sitting on your bottom.mp3", title: "You Cannot Not Get to the Top from Sitting on Your Bottom", weight: 1 },
   ];
 
-  const pickRandomTrack = () => {
-    const totalWeight = tracks.reduce((sum, track) => sum + track.weight, 0);
+  let lastTrackFile: string | null = null;
+
+  const pickWeightedTrack = (pool: typeof tracks) => {
+    const totalWeight = pool.reduce((sum, track) => sum + track.weight, 0);
     let randomWeight = Math.random() * totalWeight;
 
-    for (const track of tracks) {
+    for (const track of pool) {
       randomWeight -= track.weight;
       if (randomWeight <= 0) {
         return track;
       }
     }
 
-    return tracks[tracks.length - 1];
+    return pool[pool.length - 1];
+  };
+
+  const pickRandomTrack = () => {
+    const availableTracks = tracks.filter((track) => track.file !== lastTrackFile);
+    const track = pickWeightedTrack(availableTracks.length > 0 ? availableTracks : tracks);
+
+    lastTrackFile = track.file;
+
+    return track;
   };
 
   const button = document.querySelector(".commish");
