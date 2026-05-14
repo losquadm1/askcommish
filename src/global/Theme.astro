@@ -5,15 +5,19 @@ import "@fontsource/karla";
 ---
 
 <style is:global>
+
+@import url('https://fonts.googleapis.com/css2?family=Caudex:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+
   /* We can use this style tag to set up colors, fonts, etc. */
   :root {
-    --color-background: rgb(24, 0, 24);
+    --color-background: rgb(20, 0, 51);
     --color-text: rgb(240, 240, 240);
-    --color-accent: rgb(0, 200, 255);
-    --color-focus-ring: rgb(255, 0, 255);
+    --color-accent: rgb(202, 243, 255);
+    --color-focus-ring: rgb(255, 255, 255);
 
-    --font-body: "Karla", sans-serif;
-    --font-headings: "Karla", sans-serif;
+    --font-body: Caudex, serif ;
+    --font-headings: "Caudex", serif ;
 
     font-size: 18px;
 
@@ -35,7 +39,14 @@ import "@fontsource/karla";
   h5,
   h6 {
     color: var(--color-accent);
+    text-align: center;
+    font-family: var(--font-headings);
+    font-weight: 700;
   }
+
+p{
+  text-align: center;
+}
 
   /* default focus ring styles */
   *:focus-visible {
