@@ -11,7 +11,9 @@ import Container from "@components/Container.astro";
         <img src="/images/the commissioner.webp" alt="The All Knowing commissioner" />
       </button>
       <p id="track-title"></p>
+      <button id="quality-toggle" type="button" aria-label="Switch to HD">sd</button>
     </div>
+    
     <button id="bg-toggle" aria-label="Pause background spin">
       <img id="bg-toggle-icon" src="/images/pause.svg" alt="Pause" />
     </button>
@@ -61,7 +63,25 @@ import Container from "@components/Container.astro";
 
   const button = document.querySelector(".commish");
   const titleEl = document.getElementById("track-title");
+  const qualityToggle = document.getElementById("quality-toggle") as HTMLButtonElement;
+  const storageKeys = {
+    qualityMode: "askcommish.qualityMode",
+    bgPaused: "askcommish.bgPaused",
+  };
+  let qualityMode: "sd" | "hd" = "sd";
+  const sdDefaultGain = 2.5;
+  const sdTrackGainByFile: Record<string, number> = {
+    "i dont think so.mp3": 5,
+    "no.mp3": 1.75,
+    "nothing1.mp3": 2,
+    "nothing2.mp3": 2,
+    "you could not get to the top from sitting on your bottom.mp3": 1.15,
+    "follow the seahorse.mp3": 2,
+  };
   let currentAudio: HTMLAudioElement | null = null;
+  let audioContext: AudioContext | null = null;
+  let currentSourceNode: MediaElementAudioSourceNode | null = null;
+  let currentGainNode: GainNode | null = null;
 
   button?.addEventListener("click", () => {
     const track = pickRandomTrack();
@@ -71,9 +91,34 @@ import Container from "@components/Container.astro";
       currentAudio.currentTime = 0;
     }
 
+    if (currentSourceNode) {
+      currentSourceNode.disconnect();
+      currentSourceNode = null;
+    }
+
+    if (currentGainNode) {
+      currentGainNode.disconnect();
+      currentGainNode = null;
+    }
+
     titleEl!.style.opacity = "0";
 
-    currentAudio = new Audio(`/audio/${encodeURIComponent(track.file)}`);
+    const audioBasePath = qualityMode === "sd" ? "/audio/crunch" : "/audio";
+    currentAudio = new Audio(`${audioBasePath}/${encodeURIComponent(track.file)}`);
+
+    if (qualityMode === "sd") {
+      audioContext ??= new AudioContext();
+      if (audioContext.state === "suspended") {
+        void audioContext.resume();
+      }
+
+      currentSourceNode = audioContext.createMediaElementSource(currentAudio);
+      currentGainNode = audioContext.createGain();
+      currentGainNode.gain.value = sdTrackGainByFile[track.file] ?? sdDefaultGain;
+      currentSourceNode.connect(currentGainNode);
+      currentGainNode.connect(audioContext.destination);
+    }
+
     currentAudio.play();
 
     titleEl!.textContent = track.title;
@@ -96,6 +141,27 @@ import Container from "@components/Container.astro";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let bgPaused = prefersReducedMotion;
 
+  const applyQualityState = () => {
+    qualityToggle.textContent = qualityMode;
+    qualityToggle.setAttribute("aria-label", qualityMode === "sd" ? "Switch to HD" : "Switch to SD");
+  };
+
+  try {
+    const savedQualityMode = localStorage.getItem(storageKeys.qualityMode);
+    if (savedQualityMode === "sd" || savedQualityMode === "hd") {
+      qualityMode = savedQualityMode;
+    }
+
+    const savedBgPaused = localStorage.getItem(storageKeys.bgPaused);
+    if (savedBgPaused === "true" || savedBgPaused === "false") {
+      bgPaused = savedBgPaused === "true";
+    }
+  } catch {
+    // Ignore storage access errors (private mode or restricted storage).
+  }
+
+  applyQualityState();
+
   const applyBgState = () => {
     document.body.style.setProperty("--spin-state", bgPaused ? "paused" : "running");
     bgIcon.src = bgPaused ? "/images/play.svg" : "/images/pause.svg";
@@ -107,6 +173,24 @@ import Container from "@components/Container.astro";
   bgToggle.addEventListener("click", () => {
     bgPaused = !bgPaused;
     applyBgState();
+
+    try {
+      localStorage.setItem(storageKeys.bgPaused, String(bgPaused));
+    } catch {
+      // Ignore storage write errors.
+    }
+  });
+
+  qualityToggle.addEventListener("click", () => {
+    const isSd = qualityToggle.textContent?.trim().toLowerCase() === "sd";
+    qualityMode = isSd ? "hd" : "sd";
+    applyQualityState();
+
+    try {
+      localStorage.setItem(storageKeys.qualityMode, qualityMode);
+    } catch {
+      // Ignore storage write errors.
+    }
   });
 </script>
 
@@ -171,6 +255,41 @@ import Container from "@components/Container.astro";
   #track-title::before { content: "\201C"; }
   #track-title::after  { content: "\201D"; }
 
+  #quality-toggle,
+  #bg-toggle {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+
+  #quality-toggle:hover,
+  #bg-toggle:hover {
+    opacity: 1;
+  }
+
+  #quality-toggle {
+    position: fixed;
+    left: 1rem;
+    bottom: calc(1rem + 24px + 0.75rem);
+    width: 35px;
+    height: 35px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: #ffffff;
+    color: #000000;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1;
+    padding: 0;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    letter-spacing: 0;
+    mix-blend-mode: screen;
+  }
+
   body {
     margin: 0;
     overflow-x: hidden;
@@ -206,13 +325,7 @@ import Container from "@components/Container.astro";
     background: none;
     border: none;
     cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s ease;
     padding: 0.25rem;
-  }
-
-  #bg-toggle:hover {
-    opacity: 1;
   }
 
   #bg-toggle img {
